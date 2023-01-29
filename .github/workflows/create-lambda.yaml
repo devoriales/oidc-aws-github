@@ -11,13 +11,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    env:
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}      
 
     steps:
-      - name: Use secret
-        run: |
-          echo "The value of the secret is: " $AWS_ROLE_ARN
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Set up Python
@@ -30,7 +25,7 @@ jobs:
       - name: Configure AWS credentials from Test account
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          role-to-assume: arn:aws:iam::$AWS_ROLE_ARN:role/oidc-gh-role
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ROLE_ARN }}:role/oidc-gh-role
           aws-region: eu-west-1
           role-session-name: MySessionName
       - name: Zip lambda
@@ -64,7 +59,7 @@ jobs:
       - name: Configure AWS credentials from Test account
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          role-to-assume: $AWS_ROLE_ARN
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ROLE_ARN }}:role/oidc-gh-role
           aws-region: eu-west-1
           role-session-name: MySessionName
       - name: Test Lambda
@@ -97,7 +92,7 @@ jobs:
       - name: Configure AWS credentials from Test account
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          role-to-assume: $AWS_ROLE_ARN
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ROLE_ARN }}:role/oidc-gh-role
           aws-region: eu-west-1
           role-session-name: MySessionName
       - name: Clean Lambda
