@@ -1,0 +1,24 @@
+# .terraform directory
+.terraform/
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# .tfvars files
+*.tfvars
+
+# .log files
+*.log
+
+# ignore macos files
+.DS_Store
+.dccache
+
+# ignore terraform plan files
+*.tfplan
+*.tfplan.*
+
+# ignore python virtual environment
+venv/
+

@@ -1,0 +1,105 @@
+name: Deploy Lambda Function
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}      
+
+    steps:
+      - name: Use secret
+        run: |
+          echo "The value of the secret is: " $AWS_ROLE_ARN
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          pip install awscli #
+      - name: Configure AWS credentials from Test account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::$AWS_ROLE_ARN:role/oidc-gh-role
+          aws-region: eu-west-1
+          role-session-name: MySessionName
+      - name: Zip lambda
+        run: |
+          if aws lambda get-function --function-name gh-test-lambda; then
+            aws lambda delete-function --function-name gh-test-lambda
+          fi
+          # create Lambda function
+          zip gh-test-lambda.zip lambda_function.py
+          aws lambda create-function --function-name gh-test-lambda --zip-file fileb://gh-test-lambda.zip --runtime python3.8 --handler lambda_function.lambda_handler --role arn:aws:iam::xxxx:role/oidc-gh-role
+# create second job to test Lambda function
+  test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          pip install awscli #
+      - name: Configure AWS credentials from Test account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: $AWS_ROLE_ARN
+          aws-region: eu-west-1
+          role-session-name: MySessionName
+      - name: Test Lambda
+        run: |
+          aws lambda invoke --function-name gh-test-lambda --invocation-type RequestResponse --log-type Tail --payload "{\"name\":\"$GITHUB_ACTOR\"}" output.txt
+          cat output.txt
+          grep -q "200" output.txt || exit 1
+
+  cleanup:
+  # remove Lambda and run just after deploy and test
+  # after deploy
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          pip install awscli #
+      - name: Configure AWS credentials from Test account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: $AWS_ROLE_ARN
+          aws-region: eu-west-1
+          role-session-name: MySessionName
+      - name: Clean Lambda
+        run: |
+          aws lambda delete-function --function-name gh-test-lambda
